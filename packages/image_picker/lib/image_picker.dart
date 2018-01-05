@@ -49,6 +49,7 @@ class ImagePicker {
     ImageSource source = ImageSource.askUser,
     double maxWidth,
     double maxHeight,
+    int quality,
   }) async {
     assert(source != null);
 
@@ -66,6 +67,7 @@ class ImagePicker {
         'source': source.index,
         'maxWidth': maxWidth,
         'maxHeight': maxHeight,
+        'quality': quality,
       },
     );
 
