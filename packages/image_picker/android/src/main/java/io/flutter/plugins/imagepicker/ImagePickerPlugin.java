@@ -4,12 +4,16 @@
 
 package io.flutter.plugins.imagepicker;
 
+import android.os.Build;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.Manifest;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.content.pm.PackageManager;
+
 import com.esafirm.imagepicker.features.ImagePicker;
 import com.esafirm.imagepicker.features.camera.DefaultCameraModule;
 import com.esafirm.imagepicker.features.camera.OnImageReadyListener;
@@ -85,17 +89,19 @@ public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListe
           ImagePicker.create(activity).single().showCamera(false).start(REQUEST_CODE_PICK);
           break;
         case SOURCE_CAMERA:
-          Intent intent = cameraModule.getCameraIntent(activity);
-          if (intent == null) {
-            ActivityCompat.requestPermissions(activity, new String[] {
-                  Manifest.permission.CAMERA,
-                  Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_CODE_CAMERA);
+          boolean cameraPermission = hasPermission(Manifest.permission.CAMERA),
+                  photoPermission = hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+
+          String[] permissions = photoPermission ? !cameraPermission ? new String[]{Manifest.permission.CAMERA}: null:
+                  !cameraPermission ? new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}:
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE};
+          if (permissions != null) {
+            askPermission(permissions);
             pendingResult = null;
             return;
           }
-          activity.startActivityForResult(intent, REQUEST_CODE_CAMERA);
-//          activity.startActivityForResult(
-//              cameraModule.getCameraIntent(activity), REQUEST_CODE_CAMERA);
+         activity.startActivityForResult(
+             cameraModule.getCameraIntent(activity), REQUEST_CODE_CAMERA);
           break;
         default:
           throw new IllegalArgumentException("Invalid image source: " + imageSource);
@@ -103,6 +109,18 @@ public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListe
     } else {
       throw new IllegalArgumentException("Unknown method " + call.method);
     }
+  }
+
+  private boolean hasPermission(String permission) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
+      return true;
+
+    int _hasPermission = ContextCompat.checkSelfPermission(registrar.activity(), permission);
+    return _hasPermission == PackageManager.PERMISSION_GRANTED;
+  }
+
+  private void askPermission(String[] permissions) {
+    ActivityCompat.requestPermissions(registrar.activity(), permissions, REQUEST_CODE_CAMERA);
   }
 
   @Override
