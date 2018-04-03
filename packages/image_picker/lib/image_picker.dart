@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 
@@ -45,7 +46,7 @@ class ImagePicker {
   /// If specified, the image will be at most [maxWidth] wide and
   /// [maxHeight] tall. Otherwise the image will be returned at it's
   /// original width and height.
-  static Future<File> pickImage({
+  static Future<ImagePickerResult> pickImage({
     ImageSource source = ImageSource.askUser,
     double maxWidth,
     double maxHeight,
@@ -61,7 +62,7 @@ class ImagePicker {
       throw new ArgumentError.value(maxHeight, 'maxHeight can\'t be negative');
     }
 
-    final String path = await _channel.invokeMethod(
+    final List<dynamic> result = await _channel.invokeMethod(
       'pickImage',
       <String, dynamic>{
         'source': source.index,
@@ -71,6 +72,13 @@ class ImagePicker {
       },
     );
 
-    return new File(path);
+    return new ImagePickerResult(result[0], result[1]);
   }
+}
+
+class ImagePickerResult {
+  final String name;
+  final Uint8List bytes;
+  ImagePickerResult(this.name, this.bytes);
+
 }

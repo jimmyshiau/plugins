@@ -24,20 +24,21 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener;
+
+import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 /** Location Plugin */
 public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListener {
-  private static String TAG = "flutter";
+//  private static String TAG = "flutter";
   private static final String CHANNEL = "image_picker";
 
-  public static final int REQUEST_CODE_PICK = 2342;
-  public static final int REQUEST_CODE_CAMERA = 2343;
+  private static final int REQUEST_CODE_PICK = 2342;
+  private static final int REQUEST_CODE_CAMERA = 2343;
 
   private static final int SOURCE_ASK_USER = 0;
   private static final int SOURCE_CAMERA = 1;
@@ -86,7 +87,7 @@ public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListe
           ImagePicker.create(activity).single().start(REQUEST_CODE_PICK);
           break;
         case SOURCE_GALLERY:
-          ImagePicker.create(activity).single().showCamera(false).start(REQUEST_CODE_PICK);
+          ImagePicker.create(activity).single().theme(R.style.ImagePickerTheme).showCamera(false).start(REQUEST_CODE_PICK);
           break;
         case SOURCE_CAMERA:
           boolean cameraPermission = hasPermission(Manifest.permission.CAMERA),
@@ -168,25 +169,54 @@ public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListe
       Integer quality = methodCall.argument("quality");
       
       boolean shouldScale = maxWidth != null || maxHeight != null || quality != null;
-      if (!shouldScale) {
-        pendingResult.success(image.getPath());
-      } else {
-        try {
-          File imageFile = scaleImage(image, maxWidth, maxHeight, quality);
-          pendingResult.success(imageFile.getPath());
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
 
-      pendingResult = null;
-      methodCall = null;
+      try {
+        byte[] bytes = shouldScale ? scaleImage(image, maxWidth, maxHeight, quality) : read(image.getPath());
+        ArrayList<Object> result = new ArrayList<>();
+        result.add(image.getName());
+        result.add(bytes);
+        pendingResult.success(result);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      } finally {
+        pendingResult = null;
+        methodCall = null;
+      }
     } else {
       throw new IllegalStateException("Received images from picker that were not requested");
     }
   }
 
-  private File scaleImage(Image image, Double maxWidth, Double maxHeight, Integer quality) throws IOException {
+  private byte[] read(String path) throws IOException {
+    ByteArrayOutputStream ous = null;
+    InputStream ios = null;
+    try {
+      byte[] buffer = new byte[4096];
+      ous = new ByteArrayOutputStream();
+      ios = new FileInputStream(path);
+      int read;
+      while ((read = ios.read(buffer)) != -1) {
+        ous.write(buffer, 0, read);
+      }
+    } finally {
+      try {
+        if (ous != null)
+          ous.close();
+      } catch (IOException e) {
+        // do nothing
+      }
+
+      try {
+        if (ios != null)
+          ios.close();
+      } catch (IOException e) {
+        // do nothing
+      }
+    }
+    return ous.toByteArray();
+  }
+
+  private byte[] scaleImage(Image image, Double maxWidth, Double maxHeight, Integer quality) throws IOException {
     Bitmap bmp = BitmapFactory.decodeFile(image.getPath());
     double originalWidth = bmp.getWidth() * 1.0;
     double originalHeight = bmp.getHeight() * 1.0;
@@ -230,13 +260,6 @@ public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListe
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     scaledBmp.compress(Bitmap.CompressFormat.JPEG, quality != null ? quality: 100, outputStream);
 
-    String scaledCopyPath = image.getPath().replace(image.getName(), "scaled_" + image.getName());
-    File imageFile = new File(scaledCopyPath);
-
-    FileOutputStream fileOutput = new FileOutputStream(imageFile);
-    fileOutput.write(outputStream.toByteArray());
-    fileOutput.close();
-
-    return imageFile;
+    return outputStream.toByteArray();
   }
 }
