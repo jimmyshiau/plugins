@@ -167,14 +167,18 @@ public class ImagePickerPlugin implements MethodCallHandler, ActivityResultListe
       Double maxWidth = methodCall.argument("maxWidth");
       Double maxHeight = methodCall.argument("maxHeight");
       Integer quality = methodCall.argument("quality");
-      String name = image.getName();
 
-      boolean shouldScale = maxWidth != null || maxHeight != null
-              || (quality != null && (name.endsWith(".jpg") || name.endsWith(".jpeg")));
+      boolean shouldScale = maxWidth != null || maxHeight != null || quality != null;
 
       try {
         byte[] bytes = shouldScale ? scaleImage(image, maxWidth, maxHeight, quality) : read(image.getPath());
         ArrayList<Object> result = new ArrayList<>();
+        String name = image.getName();
+        if (shouldScale) {
+          int i = name.lastIndexOf(".");
+          if (i > 0 && i < name.length()-1)
+            name = name.substring(0, i) + ".jpg";
+        }
         result.add(name);
         result.add(bytes);
         pendingResult.success(result);
