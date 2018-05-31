@@ -140,7 +140,7 @@ static const int SOURCE_GALLERY = 2;
     image = [self scaledImage:image maxWidth:maxWidth maxHeight:maxHeight];
   }
 
-  NSData *data = UIImageJPEGRepresentation(image, quality != (id)[NSNull null] ? (quality.intValue / 80.0) : 1.0);
+  NSData *data = UIImageJPEGRepresentation(image, quality != (id)[NSNull null] ? (quality.intValue / 100.0) : 1.0);
   NSArray *array = @[[self newPhotoFileName], [FlutterStandardTypedData typedDataWithBytes:data]];
   _result(array);
 
