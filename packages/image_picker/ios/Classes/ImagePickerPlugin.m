@@ -134,27 +134,24 @@ static const int SOURCE_GALLERY = 2;
 
   NSNumber *maxWidth = [_arguments objectForKey:@"maxWidth"];
   NSNumber *maxHeight = [_arguments objectForKey:@"maxHeight"];
-
+  NSNumber *quality = [_arguments objectForKey:@"quality"];
+    
   if (maxWidth != (id)[NSNull null] || maxHeight != (id)[NSNull null]) {
     image = [self scaledImage:image maxWidth:maxWidth maxHeight:maxHeight];
   }
 
-  NSData *data = UIImageJPEGRepresentation(image, 1.0);
-  NSString *tmpDirectory = NSTemporaryDirectory();
-  NSString *guid = [[NSProcessInfo processInfo] globallyUniqueString];
-  // TODO(jackson): Using the cache directory might be better than temporary
-  // directory.
-  NSString *tmpFile = [NSString stringWithFormat:@"image_picker_%@.jpg", guid];
-  NSString *tmpPath = [tmpDirectory stringByAppendingPathComponent:tmpFile];
-  if ([[NSFileManager defaultManager] createFileAtPath:tmpPath contents:data attributes:nil]) {
-    _result(tmpPath);
-  } else {
-    _result([FlutterError errorWithCode:@"create_error"
-                                message:@"Temporary file could not be created"
-                                details:nil]);
-  }
+  NSData *data = UIImageJPEGRepresentation(image, quality != (id)[NSNull null] ? (quality.intValue / 80.0) : 1.0);
+  NSArray *array = @[[self newPhotoFileName], [FlutterStandardTypedData typedDataWithBytes:data]];
+  _result(array);
+
   _result = nil;
   _arguments = nil;
+}
+    
+- (NSString *) newPhotoFileName {
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:@"yyyy-MM-dd HH.mm.ss.SSS"];
+    return [NSString stringWithFormat:@"%@.%@", [dateFormatter stringFromDate:[NSDate date]], @"jpeg"];
 }
 
 // The way we save images to the tmp dir currently throws away all EXIF data
